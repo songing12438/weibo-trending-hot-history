@@ -2,7 +2,7 @@ name: Sync with upstream repository
 
 on:
   schedule:
-    - cron: '0 16 * * *'  # 每天北京时间 00:00 执行
+    - cron: '10 * * * *'  # 每天北京时间 00:00 执行
   workflow_dispatch:  # 允许手动触发
 
 jobs:
@@ -28,87 +28,21 @@ jobs:
       - name: Fetch upstream changes
         run: git fetch upstream
 
-      - name: Merge upstream changes using "theirs" strategy
+      - name: Merge upstream changes
         run: |
-          # 创建一个临时分支并切换到上游分支
-          git checkout -b temp upstream/master
-          # 使用 ours 策略将当前分支合并到临时分支，添加 --allow-unrelated-histories 参数
-          git merge -s ours master --allow-unrelated-histories
-          # 切换回主分支
-          git checkout master
-          # 将临时分支合并到主分支
-          git merge temp
+          # 尝试直接合并上游分支到主分支
+          git merge upstream/master --no-commit --no-ff
           if [ $? -ne 0 ]; then
-            echo "Merge conflict detected. This should not happen with 'theirs' strategy."
-            exit 1
-          fi
-          # 删除临时分支
-          git branch -D temp
-
-      - name: Ensure sync-upstream.yml exists
-        run: |
-          if [ ! -f .github/workflows/sync-upstream.yml ]; then
-            mkdir -p .github/workflows
-            cat << EOF > .github/workflows/sync-upstream.yml
-name: Sync with upstream repository
-
-on:
-  schedule:
-    - cron: '0 16 * * *'  # 每天北京时间 00:00 执行
-  workflow_dispatch:  # 允许手动触发
-
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    env:
-      TZ: Asia/Shanghai
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          ref: master
-
-      - name: Setup Git Config
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "action@github.com"
-
-      - name: Add upstream repository
-        run: git remote add upstream https://github.com/lxw15337674/weibo-trending-hot-history.git
-
-      - name: Fetch upstream changes
-        run: git fetch upstream
-
-      - name: Merge upstream changes using "theirs" strategy
-        run: |
-          # 创建一个临时分支并切换到上游分支
-          git checkout -b temp upstream/master
-          # 使用 ours 策略将当前分支合并到临时分支，添加 --allow-unrelated-histories 参数
-          git merge -s ours master --allow-unrelated-histories
-          # 切换回主分支
-          git checkout master
-          # 将临时分支合并到主分支
-          git merge temp
-          if [ $? -ne 0 ]; then
-            echo "Merge conflict detected. This should not happen with 'theirs' strategy."
-            exit 1
-          fi
-          # 删除临时分支
-          git branch -D temp
-
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: \${{ secrets.MY_PAT }}
-          branch: master
-EOF
-            git add .github/workflows/sync-upstream.yml
-            git commit -m "Restore sync-upstream.yml"
+            # 处理合并冲突，保留本地文件
+            git checkout --ours sync-upstream.yml
+            git add sync-upstream.yml
+            git commit -m "Merge upstream changes, keep sync-upstream.yml"
+          else
+            git commit -m "Merge upstream changes"
           fi
 
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
-          github_token: ${{ secrets.MY_PAT }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: master
