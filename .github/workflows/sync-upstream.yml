@@ -30,8 +30,8 @@ jobs:
 
       - name: Merge upstream changes
         run: |
-          # 尝试直接合并上游分支到主分支
-          git merge upstream/master --no-commit --no-ff
+          # 尝试直接合并上游分支到主分支，允许合并无关联历史
+          git merge upstream/master --no-commit --no-ff --allow-unrelated-histories
           if [ $? -ne 0 ]; then
             # 处理合并冲突，保留本地文件
             git checkout --ours sync-upstream.yml
