@@ -2,8 +2,8 @@ name: Sync with upstream repository
 
 on:
   schedule:
-    - cron: '10 * * * *'  # 每天北京时间 00:00 执行
-  workflow_dispatch:  # 允许手动触发
+    - cron: '10 * * * *'
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -30,15 +30,19 @@ jobs:
 
       - name: Merge upstream changes
         run: |
-          # 尝试直接合并上游分支到主分支，允许合并无关联历史
-          git merge upstream/master --no-commit --no-ff --allow-unrelated-histories
-          if [ $? -ne 0 ]; then
-            # 处理合并冲突，保留本地文件
-            git checkout --ours sync-upstream.yml
-            git add sync-upstream.yml
-            git commit -m "Merge upstream changes, keep sync-upstream.yml"
-          else
+          # 尝试合并并自动处理冲突
+          if git merge upstream/master --no-commit --no-ff --allow-unrelated-histories -X theirs; then
             git commit -m "Merge upstream changes"
+          else
+            # 显式处理冲突（此处使用-X theirs已处理大部分情况，保留此逻辑以防万一）
+            git diff --name-only --diff-filter=U | while read file; do
+              # 特殊处理sync-upstream.yml保留本地版本
+              if [[ "$file" == "sync-upstream.yml" ]]; then
+                git checkout --ours -- "$file"
+              fi
+              git add "$file"
+            done
+            git commit -m "Merge upstream changes: Resolve conflicts by preferring upstream"
           fi
 
       - name: Push changes
