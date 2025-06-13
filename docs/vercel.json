@@ -1,0 +1,7 @@
+{
+    "functions": {
+        "pages/**/*": {
+            "maxDuration": 60,
+            "excludeFiles": "{api,archives,docs,node_modules,.next,public}/**"        }     
+    }
+}
