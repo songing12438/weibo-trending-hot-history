@@ -1,49 +1,34 @@
 import { MetadataRoute } from 'next'
-import fs from 'fs';
-import path from 'path';
-
-// Assuming the site is hosted at this URL
-const BASE_URL = 'https://weibo-trending-hot-history.vercel.app';
+import dayjs from 'dayjs'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  // Construct the absolute path to the api directory relative to the project root
-  // Note: This path might need adjustment depending on the build/runtime environment
-  const apiDirectory = path.join(process.cwd(), '..', 'api'); 
-  let dateFiles: string[] = [];
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://weibo-trending-hot-history.vercel.app'
 
-  try {
-    dateFiles = fs.readdirSync(apiDirectory)
-      .filter(file => file.endsWith('.json') && /^\d{4}-\d{2}-\d{2}\.json$/.test(file));
-  } catch (error) {
-    console.error('Error reading API directory for sitemap:', error);
-    // Return a minimal sitemap if directory reading fails
-    return [
-      {
-        url: BASE_URL,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 1,
-      },
-    ];
-  }
+    // 生成从2024-05-20到今天的所有日期
+    const startDate = dayjs('2024-05-20')
+    const endDate = dayjs()
+    const dates: string[] = []
 
-  const hotsUrls = dateFiles.map((file) => {
-    const date = file.replace('.json', '');
-    return {
-      url: `${BASE_URL}/hots/${date}`,
-      lastModified: new Date(), // Ideally, use file modification time or a fixed date
-      changeFrequency: 'daily' as 'daily',
-      priority: 0.8,
-    };
-  });
+    let currentDate = startDate
+    while (currentDate.isBefore(endDate) || currentDate.isSame(endDate, 'day')) {
+        dates.push(currentDate.format('YYYY-MM-DD'))
+        currentDate = currentDate.add(1, 'day')
+    }
 
-  return [
-    {
-      url: BASE_URL,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1,
-    },
-    ...hotsUrls,
-  ];
-}
+    const routes: MetadataRoute.Sitemap = [
+        {
+            url: baseUrl,
+            lastModified: new Date(),
+            changeFrequency: 'daily',
+            priority: 1,
+        },
+        ...dates.map(date => ({
+            url: `${baseUrl}/hots/${date}`,
+            lastModified: dayjs(date).isSame(dayjs(), 'day') ? new Date() : dayjs(date).toDate(),
+            changeFrequency: 'daily' as const,
+            priority: dayjs(date).isSame(dayjs(), 'day') ? 0.9 : 0.7,
+        }))
+    ]
+
+    return routes
+} 
