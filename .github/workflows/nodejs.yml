@@ -3,6 +3,7 @@ name: scraping
 on:
   schedule:
     - cron: "0 * * * *"
+  workflow_dispatch:         # 支持手动触发
 
 jobs:
   build:
@@ -14,6 +15,23 @@ jobs:
     steps:
       - name: Checkout Git Source
         uses: actions/checkout@v3 # Updated to v3
+        with:
+          sparse-checkout: |
+            *.ts
+            *.js
+            *.json
+            *.md
+            *.bash
+            .github/
+            utils.ts
+            type.ts
+            index.ts
+            package.json
+            pnpm-lock.yaml
+            tsconfig.json
+            README.md
+            commit.bash
+          sparse-checkout-cone-mode: false
 
       - name: Use Node.js
         uses: actions/setup-node@v3
@@ -25,6 +43,9 @@ jobs:
 
       - name: Install Dependencies
         run: pnpm install
+
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install chromium
 
       - name: Scraping
         run: pnpm run start
